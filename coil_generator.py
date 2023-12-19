@@ -229,3 +229,130 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
         that the shorting traces are OK for this component
         """
         self.module.AddNetTiePadGroup("1,2,3")
+
+class CoilGenerator1L1T(FootprintWizardBase.FootprintWizard):
+    center_x = 0
+    center_y = 0
+
+    GetName = lambda self: "Coil Generator, single layer, 1 turn"
+    GetDescription = (
+        lambda self: "Generates a flux-neutral coil within a circular aperture."
+    )
+    GetValue = lambda self: "Single coil, single layer"
+
+    def GenerateParameterList(self):
+        # Info about the coil itself.
+        self.AddParam("Coil specs", "Stub Length", self.uMM, 5, min_value=0)
+        self.AddParam(
+            "Coil specs",
+            "Layer",
+            self.uString,
+            "F_Cu",
+            hint="Layer name.  Uses '_' instead of '.'",
+        )
+        self.AddParam("Coil specs", "Direction", self.uBool, True, hint="Unused for now")
+
+        # Information about where this footprint needs to fit into.
+        self.AddParam("Install Info", "Radius", self.uMM, 30)
+
+        # Info about the fabrication capabilities
+        self.AddParam("Fab Specs", "Trace Width", self.uMM, 0.2, min_value=0)
+        self.AddParam("Fab Specs", "Trace Spacing", self.uMM, 0.2, min_value=0)
+        self.AddParam("Fab Specs", "Pad Drill", self.uMM, 0.5, min_value=0)
+        self.AddParam("Fab Specs", "Pad Annular Ring", self.uMM, 0.2, min_value=0)
+        
+    def CheckParameters(self):
+        self.radius = self.parameters["Install Info"]["Radius"]
+
+        self.trace_width = self.parameters["Fab Specs"]["Trace Width"]
+        self.trace_space = self.parameters["Fab Specs"]["Trace Spacing"]
+        self.pad_hole = self.parameters["Fab Specs"]["Pad Drill"]
+        self.pad_ann_ring = self.parameters["Fab Specs"]["Pad Annular Ring"]
+
+        self.layer = getattr(pcbnew, self.parameters["Coil specs"]["Layer"])
+        self.clockwise_bool = self.parameters["Coil specs"]["Direction"]
+        self.stub_length = self.parameters["Coil specs"]["Stub Length"]
+        
+    def BuildThisFootprint(self):
+        self.cw_multiplier = 1 if self.clockwise_bool else -1
+
+        
+        """ Calculate several of the internal variables needed. """
+        pad_d = self.pad_ann_ring * 2 + self.pad_hole
+        radius1 = self.radius + self.trace_width/2
+        radius2 = self.trace_width
+        
+        theta2 = math.acos((self.trace_space + pad_d/2 + radius2)/(radius1 + radius2))
+        theta1 = math.pi/2 - theta2
+        
+        self.draw.SetLayer(self.layer)
+
+        """ Draw the main arc """
+        arc_start_x = self.center_x + radius1 * math.cos(theta1)
+        arc_start_y = self.center_y - radius1 * math.sin(theta1)
+        self.draw.Arc(
+            self.center_x,
+            self.center_y,
+            arc_start_x,
+            arc_start_y,
+            pcbnew.EDA_ANGLE(-2 * (math.pi - theta1) * self.cw_multiplier, pcbnew.RADIANS_T),
+        )
+        
+        """ Draw the stubs """
+        arc_center_x = self.center_x + (radius1 + radius2) * math.cos(theta1)
+        arc_center_y = self.center_y - (radius1 + radius2) * math.sin(theta1)
+        self.draw.Arc(
+            arc_center_x,
+            arc_center_y,
+            arc_start_x,
+            arc_start_y,
+            pcbnew.EDA_ANGLE(-theta2 * self.cw_multiplier, pcbnew.RADIANS_T),
+        )
+        self.draw.Arc(
+            arc_center_x,
+            -arc_center_y,
+            arc_start_x,
+            -arc_start_y,
+            pcbnew.EDA_ANGLE(theta2 * self.cw_multiplier, pcbnew.RADIANS_T),
+        )
+        
+        self.draw.Line(
+            arc_center_x,
+            pad_d/2 + self.trace_space,
+            arc_center_x + self.stub_length,
+            pad_d/2 + self.trace_space,
+        )
+        self.draw.Line(
+            arc_center_x,
+            - pad_d/2 - self.trace_space,
+            arc_center_x + self.stub_length,
+            - pad_d/2 - self.trace_space,
+        )
+
+        pad = pcbnew.PAD(self.module)
+        pad.SetSize(pcbnew.VECTOR2I(pad_d, pad_d))
+        pad.SetShape(pcbnew.PAD_SHAPE_CIRCLE)
+        pad.SetAttribute(pcbnew.PAD_ATTRIB_PTH)
+        pad.SetLayerSet(pcbnew.LSET.AllCuMask())
+        pad.SetDrillSize(pcbnew.VECTOR2I(self.pad_hole, self.pad_hole))
+
+        pos = pcbnew.VECTOR2I(int(arc_center_x + self.stub_length), -int(pad_d/2 + self.trace_space) * self.cw_multiplier)
+        pad.SetPosition(pos)
+        pad.SetPos0(pos)
+        pad.SetNumber(1)
+        pad.SetName("1")
+        self.module.Add(pad)
+        pad = pad.Duplicate()
+        
+        pos = pcbnew.VECTOR2I(int(arc_center_x + self.stub_length), int(pad_d/2 + self.trace_space) * self.cw_multiplier)
+        pad.SetPosition(pos)
+        pad.SetPos0(pos)
+        pad.SetNumber(2)
+        pad.SetName("2")
+        self.module.Add(pad)
+
+        """
+        Add Net Tie Group to the footprint. This allows the DRC to understand 
+        that the shorting traces are OK for this component
+        """
+        self.module.AddNetTiePadGroup("1,2")
