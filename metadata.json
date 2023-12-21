@@ -1,0 +1,27 @@
+{
+    "$schema": "https://go.kicad.org/pcm/schemas/v1",
+    "name": "KiCAD Coil Generator",
+    "description": "Gereates various types of PCB trace inductors",
+    "description_full": "A collection of footprint wizards to generate PCB trace inductors.",
+    "identifier": "com.github.SK-Electronics-Consulting.kicad-coil-generators",
+    "type": "plugin",
+    "author": {
+        "name": "SK Electronics Consulting",
+        "contact": {
+            "web": "https://kazarians.dev"
+        }
+    },
+    "license": "GPL-3.0",
+    "resources": {
+        "homepage": "https://github.com/SK-Electronics-Consulting/kicad-coil-generators"
+    },
+    "versions": [
+        {
+            "version": "1.0.0",
+            "status": "stable",
+            "kicad_version": "7.0",
+            "download_sha256": ""
+            "download_url": ""
+        }
+    ]
+}
