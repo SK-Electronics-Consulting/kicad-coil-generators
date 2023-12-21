@@ -13,7 +13,7 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
 
     GetName = lambda self: "Coil Generator from ID"
     GetDescription = (
-        lambda self: "Generates a flux-neutral coil within a circular aperture."
+        lambda self: "Generates a flux-neutral coil within a circular."
     )
     GetValue = lambda self: "Coil based on ID"
 
@@ -88,6 +88,7 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
 
         """ Calculate several of the internal variables needed. """
         via_d = self.via_ann_ring * 2 + self.via_hole
+        pad_d = self.pad_ann_ring * 2 + self.pad_hole
 
         self.draw.SetLineThickness(self.trace_width)
         
@@ -185,7 +186,7 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
         """
         self.draw.SetLayer(self.first_layer)
         arc_start_x = self.center_x + self.aperture_r + self.aperture_gap + ( self.trace_width if self.odd_loops else max(via_d, self.trace_width) ) + (self.turns//2) * (self.trace_space + self.trace_width) - self.trace_width/2
-        arc_center_x = arc_start_x + max(via_d, self.trace_width)
+        arc_center_x = arc_start_x + max(via_d, self.trace_width) * 2
         self.draw.Arc(
             arc_center_x,
             self.center_y,
@@ -203,13 +204,13 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
         )
         
         pad = pcbnew.PAD(self.module)
-        pad.SetSize(pcbnew.VECTOR2I(via_d, via_d))
+        pad.SetSize(pcbnew.VECTOR2I(pad_d, pad_d))
         pad.SetShape(pcbnew.PAD_SHAPE_CIRCLE)
         pad.SetAttribute(pcbnew.PAD_ATTRIB_PTH)
         pad.SetLayerSet(pcbnew.LSET.AllCuMask())
-        pad.SetDrillSize(pcbnew.VECTOR2I(self.via_hole, self.via_hole))
+        pad.SetDrillSize(pcbnew.VECTOR2I(self.pad_hole, self.pad_hole))
 
-        pos = pcbnew.VECTOR2I(int(arc_center_x), -int(max(via_d, self.trace_width) * self.cw_multiplier))
+        pos = pcbnew.VECTOR2I(int(arc_center_x), -int(max(via_d, self.trace_width) * 2 * self.cw_multiplier))
         pad.SetPosition(pos)
         pad.SetPos0(pos)
         pad.SetNumber(1)
@@ -217,7 +218,7 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
         self.module.Add(pad)
         pad = pad.Duplicate()
         
-        pos = pcbnew.VECTOR2I(int(arc_center_x), int(max(via_d, self.trace_width)) * self.cw_multiplier)
+        pos = pcbnew.VECTOR2I(int(arc_center_x), int(max(via_d, self.trace_width)) * 2 * self.cw_multiplier)
         pad.SetPosition(pos)
         pad.SetPos0(pos)
         pad.SetNumber(2)
