@@ -20,8 +20,7 @@
             "version": "1.0.0",
             "status": "stable",
             "kicad_version": "7.0",
-            "download_sha256": ""
-            "download_url": ""
+            "download_url": "https://github.com/SK-Electronics-Consulting/kicad-coil-generators/releases/download/v1.0.0/kicad-coil-generator-v1_0_0.zip"
         }
     ]
 }
