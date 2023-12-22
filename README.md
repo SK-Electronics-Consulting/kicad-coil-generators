@@ -1,18 +1,13 @@
-# Coil Generator for Inner Diameter
+# Coil Generators
 
 ## Background
 
-There is a need to generate flux-neutral coils that can take up the largest area
-within a space.  In the case of Starfish Neuro, that was a circular aperture.  
-This tool was developed to quickly iterate on various coil parameters without
-having to re-draw things by hand.
+PCB coils are becoming quite common, and defining them can take some time. This plugin is intended to capture useful coil generators of various types.  It is also intended to do enough math under-the-hood to prevent collisions between generated features.  
 
 ## Installation
 
 This tool is intended to be used within the KiCAD Footprint Wizard tool. To do
-so requires "installation" into KiCAD.  This is either placing this whole repo
-within the appropriate directory, or placing a shortcut or symbolic link in that
-directory.
+so requires installation into KiCAD.  This is either installing using the Plugin and Content Manager or clone this repo into one of the plugin directories.  (Further details below.)
 
 This tool has been tested with KiCAD 7.0.9.  It might work with other versions
 (6.x and 7.0.x), but has not been tested.
@@ -47,6 +42,11 @@ TODO but should be similar to Linux
 1. Save this to an appropriate footprint library.  
 1. From here, just use this as a footprint for an inductor in KiCAD, as it follows the normal design flow.
 
+## Coil Generator templates
+
+1. `CoilGeneratorID2L:` This coil generator will make a single coil across 2 PCB layers, and will do so starting from a defined inner diameter. It's intended to go around an open hole in the PCB.
+1. `CoilGenerator1L1T:` This coil generator will make a simple, single turn coil, terminating in vias.  It's intended to be used with another coil generator, and act as a pickup coil. 
+
 ## Limitations
 
 This tool will have several limitations in it's current state.
@@ -58,4 +58,6 @@ This tool will have several limitations in it's current state.
 
 ## To dos
 
-1. TODO: Fix the sign of the various variables. It feels like often the +/- is counter intuitive within the calculations.
+1. TODO: Add the flux neutral coil generator from my other repo.
+1. TODO: Add different geometries of coils.
+1. TODO: Add an inductance calculator with verification data.
