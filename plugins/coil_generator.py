@@ -2,12 +2,6 @@ import pcbnew
 import FootprintWizardBase
 import math
 
-"""
-TODOS
-1. Handle the single turn condition.  
-
-"""
-
 
 class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
     center_x = 0
