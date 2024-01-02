@@ -8,7 +8,7 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
     center_y = 0
 
     GetName = lambda self: "Coil Generator from ID"
-    GetDescription = lambda self: "Generates a flux-neutral coil within a circular."
+    GetDescription = lambda self: "Generates a coil around a circular aperture."
     GetValue = lambda self: "Coil based on ID"
 
     def GenerateParameterList(self):
@@ -272,7 +272,7 @@ class CoilGenerator1L1T(FootprintWizardBase.FootprintWizard):
 
     GetName = lambda self: "Coil Generator, single layer, 1 turn"
     GetDescription = (
-        lambda self: "Generates a flux-neutral coil within a circular aperture."
+        lambda self: "Generates a single turn loop at a circular aperture."
     )
     GetValue = lambda self: "Single coil, single layer"
 

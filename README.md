@@ -6,8 +6,7 @@ PCB coils are becoming quite common, and defining them can take some time. This 
 
 ## Installation
 
-This tool is intended to be used within the KiCAD Footprint Wizard tool. To do
-so requires installation into KiCAD.  This is either installing using the Plugin and Content Manager or clone this repo into one of the plugin directories.  (Further details below.)
+This tool is intended to be used within the KiCAD Footprint Wizard tool. To do so requires installation into KiCAD.  This is either installing using the Plugin and Content Manager or clone this repo into one of the plugin directories.  (Further details below.)
 
 This tool has been tested with KiCAD 7.0.9.  It might work with other versions
 (6.x and 7.0.x), but has not been tested.
@@ -44,8 +43,9 @@ TODO but should be similar to Linux
 
 ## Coil Generator templates
 
-1. `CoilGeneratorID2L:` This coil generator will make a single coil across 2 PCB layers, and will do so starting from a defined inner diameter. It's intended to go around an open hole in the PCB.
-1. `CoilGenerator1L1T:` This coil generator will make a simple, single turn coil, terminating in vias.  It's intended to be used with another coil generator, and act as a pickup coil. 
+1. `CoilGeneratorID2L:` This will make a single coil across 2 PCB layers, and will do so starting from a defined inner diameter. It's intended to go around an open hole in the PCB.
+1. `CoilGenerator1L1T:` This will make a simple, single turn coil, terminating in vias.  It's intended to be used with another coil generator, and act as a pickup coil. 
+1. `FluxNeutralCoilGen:` This will make a flux-neutral coil inside of a circular aperture.  The purpose of a flux neutral coil is to cancel out any flux that affects both coils, but will pick up any flux that affects only one.  Use as you see fit. 
 
 ## Limitations
 
@@ -53,11 +53,9 @@ This tool will have several limitations in it's current state.
 
 1. It will not check for manufacturability of the coil.  However, you can do this in PCBNew.
 1. It will not check all conditions of if it will make a shape that's not plausible.  Specifically, using a min-radius of 0 will cause issues with the vias.
-1. At it's current setup, it will only generate a 2 layer configuration. Using more than 2 layers will probably need a different topology.
 1. If setting the layers to an inner layer, the Footprint Wizard will not display correctly.  This is a bug/limitation of KiCAD.  Once it's exported, it will work correctly.  One alternative to this is to generate the shape with F_Cu/B_Cu, and then do a text replacement after the fact.
 
 ## To dos
 
-1. TODO: Add the flux neutral coil generator from my other repo.
 1. TODO: Add different geometries of coils.
 1. TODO: Add an inductance calculator with verification data.
