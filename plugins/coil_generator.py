@@ -99,7 +99,7 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
         """
         Draw the starting via between the front and back layers
         """
-        # pad_number = 3
+        pad_number = 3
         pad = pcbnew.PAD(self.module)
         pad.SetSize(pcbnew.VECTOR2I(via_d, via_d))
         pad.SetShape(pcbnew.PAD_SHAPE_CIRCLE)
@@ -113,9 +113,8 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
             0,
         )
         pad.SetPosition(pos)
-        pad.SetPos0(pos)
-        # pad.SetNumber(pad_number)
-        # pad.SetName(str(pad_number))
+        pad.SetNumber(pad_number)
+        pad.SetName(str(pad_number))
         self.module.Add(pad)
 
         """
@@ -243,7 +242,6 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
             -int(max(via_d, self.trace_width) * 2 * self.cw_multiplier),
         )
         pad.SetPosition(pos)
-        pad.SetPos0(pos)
         pad.SetNumber(1)
         pad.SetName("1")
         self.module.Add(pad)
@@ -254,7 +252,6 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
             int(max(via_d, self.trace_width)) * 2 * self.cw_multiplier,
         )
         pad.SetPosition(pos)
-        pad.SetPos0(pos)
         pad.SetNumber(2)
         pad.SetName("2")
         self.module.Add(pad)
@@ -385,7 +382,6 @@ class CoilGenerator1L1T(FootprintWizardBase.FootprintWizard):
             * self.cw_multiplier,
         )
         pad.SetPosition(pos)
-        pad.SetPos0(pos)
         pad.SetNumber(1)
         pad.SetName("1")
         self.module.Add(pad)
@@ -397,7 +393,6 @@ class CoilGenerator1L1T(FootprintWizardBase.FootprintWizard):
             * self.cw_multiplier,
         )
         pad.SetPosition(pos)
-        pad.SetPos0(pos)
         pad.SetNumber(2)
         pad.SetName("2")
         self.module.Add(pad)
