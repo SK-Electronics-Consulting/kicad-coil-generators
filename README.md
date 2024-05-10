@@ -8,20 +8,11 @@ PCB coils are becoming quite common, and defining them can take some time. This 
 
 This tool is intended to be used within the KiCAD Footprint Wizard tool. To do so requires installation into KiCAD.  This is either installing using the Plugin and Content Manager or clone this repo into one of the plugin directories.  (Further details below.)
 
-This tool has been tested with KiCAD 7.0.9.  It might work with other versions
-(6.x and 7.0.x), but has not been tested.
+This tool has been tested with KiCAD 8.0.1.  It might work with other versions (6.x and 7.x), but has not been tested.
 
 ### For Linux
 
-1. Clone the Repo into `~/.local/share/kicad/7.0/scripting/plugins/`
-
-OR
-
-(Needs to be tested for accuracy, but this is the method I'm using)
-
-1. Clone the repo into your preferred location.
-2. `cd flux-neutral-coil-generator`
-3. `ln -s ${PWD}/flux_neutral_coil_generator.py ~/.local/share/kicad/7.0/scripting/plugins/flux_neutral_coil_generator.py`
+1. Clone the Repo into `~/.local/share/kicad/8.0/scripting/plugins/`
 
 ### For Mac
 
@@ -29,7 +20,7 @@ TODO but should be similar to Linux
 
 ### For Windows
 
-1. Clone repo into `{Documents}\KiCad\7.0\scripting`
+1. Clone repo into `{Documents}\KiCad\8.0\scripting`
 
 ## Usage
 
@@ -44,8 +35,8 @@ TODO but should be similar to Linux
 ## Coil Generator templates
 
 1. `CoilGeneratorID2L:` This will make a single coil across 2 PCB layers, and will do so starting from a defined inner diameter. It's intended to go around an open hole in the PCB.
-1. `CoilGenerator1L1T:` This will make a simple, single turn coil, terminating in vias.  It's intended to be used with another coil generator, and act as a pickup coil. 
-1. `FluxNeutralCoilGen:` This will make a flux-neutral coil inside of a circular aperture.  The purpose of a flux neutral coil is to cancel out any flux that affects both coils, but will pick up any flux that affects only one.  Use as you see fit. 
+1. `CoilGenerator1L1T:` This will make a simple, single turn coil, terminating in vias.  It's intended to be used with another coil generator, and act as a pickup coil.
+1. `FluxNeutralCoilGen:` This will make a flux-neutral coil inside of a circular aperture.  The purpose of a flux neutral coil is to cancel out any flux that affects both coils, but will pick up any flux that affects only one.  Use as you see fit.
 
 ## Limitations
 
@@ -57,5 +48,6 @@ This tool will have several limitations in it's current state.
 
 ## To dos
 
-1. TODO: Add different geometries of coils.
+1. TODO: Add different geometries of coils. (Rectangular, trapezoidal, wedge of circle)
 1. TODO: Add an inductance calculator with verification data.
+1. TODO: Add a resistance calculation for Ohms/oz.cu.
