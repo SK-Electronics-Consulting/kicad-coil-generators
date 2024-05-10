@@ -516,16 +516,17 @@ class FluxNeutralCoilGen(FootprintWizardBase.FootprintWizard):
             f"Outer Diameter: {self.aperture_r/1e6}\n"
             f"Outer Ring Gap: {self.aperture_gap/1e6}\n"
             f"Turns: {self.turns}\n"
-            f'Layers (Start->Finish): {self.parameters["Coil specs"]["First Layer"]}->{self.parameters["Coil specs"]["Second Layer"]}\n'
-            f"Trace Width/space: {self.trace_width/1e6}/{self.trace_space/1e6}\n"
-            f"Pad Drill/annular ring: {self.pad_hole/1e6}/{self.pad_ann_ring/1e6}\n"
-            f"Via Drill/annular ring: {self.via_hole/1e6}/{self.via_ann_ring/1e6}"
             f"Min Radius: {self.min_radius/1e6}\n"
             f"Stub Length: {self.stub_length/1e6}\n"
+            f'Layers (Start->Finish): {self.parameters["Coil specs"]["First Layer"]}->{self.parameters["Coil specs"]["Second Layer"]}\n'
+            f"Trace Width/space: {self.trace_width/1e6}/{self.trace_space/1e6}\n"
+            f"Via Drill/annular ring: {self.via_hole/1e6}/{self.via_ann_ring/1e6}\n"
+            f"Pad Drill/annular ring: {self.pad_hole/1e6}/{self.pad_ann_ring/1e6}\n"
         )
         fab_text = pcbnew.PCB_TEXT(self.module)
         fab_text.SetText(fab_text_s)
         fab_text.SetPosition(pcbnew.VECTOR2I(0, 0))
         fab_text.SetTextSize(pcbnew.VECTOR2I(text_size, text_size))
-        fab_text.SetLayer(pcbnew.F_Fab)
+        fab_text.SetLayer(pcbnew.User_2)
+        fab_text.SetHorizJustify(pcbnew.GR_TEXT_H_ALIGN_LEFT)
         self.module.Add(fab_text)
