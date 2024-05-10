@@ -46,8 +46,17 @@ This tool will have several limitations in it's current state.
 1. It will not check all conditions of if it will make a shape that's not plausible.  Specifically, using a min-radius of 0 will cause issues with the vias.
 1. If setting the layers to an inner layer, the Footprint Wizard will not display correctly.  This is a bug/limitation of KiCAD.  Once it's exported, it will work correctly.  One alternative to this is to generate the shape with F_Cu/B_Cu, and then do a text replacement after the fact.
 
+## Version history
+
+| Version | Description |
+| ------- | ----------- |
+| 1.0.0   | Initial Version with 2 layer coil and single loop coil |
+| 1.1.0   | Add Flux Neutral Coil |
+| 1.2.0   | Update to KiCAD 8. Add parameter text into textbox. |
+
 ## To dos
 
 1. TODO: Add different geometries of coils. (Rectangular, trapezoidal, wedge of circle)
 1. TODO: Add an inductance calculator with verification data.
 1. TODO: Add a resistance calculation for Ohms/oz.cu.
+1. TODO: Add cutouts to flux neutral and add boolean to enable/disable it.
