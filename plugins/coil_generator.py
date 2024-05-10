@@ -1,58 +1,141 @@
 import pcbnew
 import FootprintWizardBase
 import math
+import json
+import os
 
 
 class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
     center_x = 0
     center_y = 0
 
+    json_file = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "CoilGeneratorID2L.json"
+    )
+
     GetName = lambda self: "Coil Generator from ID"
     GetDescription = lambda self: "Generates a coil around a circular aperture."
     GetValue = lambda self: "Coil based on ID"
 
     def GenerateParameterList(self):
+        # Set some reasonable default values for the parameters
+        defaults = {
+            "Coil specs": {
+                "Total Turns": 15,
+                "First Layer": "F_Cu",
+                "Second Layer": "B_Cu",
+                "Direction": True,
+            },
+            "Install Info": {
+                "Inside Diameter, Radius": 30000000,
+                "Inner Ring gap": 500000,
+            },
+            "Fab Specs": {
+                "Trace Width": 200000,
+                "Trace Spacing": 200000,
+                "Via Drill": 300000,
+                "Via Annular Ring": 150000,
+                "Pad Drill": 500000,
+                "Pad Annular Ring": 200000,
+            },
+        }
+
+        # If this has been run before, load the previous values
+        if os.path.exists(self.json_file):
+            with open(self.json_file, "r") as f:
+                defaults = json.load(f)
+
         # Info about the coil itself.
-        self.AddParam("Coil specs", "Total Turns", self.uInteger, 15, min_value=1)
+        self.AddParam(
+            "Coil specs",
+            "Total Turns",
+            self.uInteger,
+            defaults["Coil specs"]["Total Turns"],
+            min_value=1,
+        )
         self.AddParam(
             "Coil specs",
             "First Layer",
             self.uString,
-            "F_Cu",
+            defaults["Coil specs"]["First Layer"],
             hint="Layer name.  Uses '_' instead of '.'",
         )
         self.AddParam(
             "Coil specs",
             "Second Layer",
             self.uString,
-            "B_Cu",  # "In1_Cu",
+            defaults["Coil specs"]["Second Layer"],
             hint="Layer name.  Uses '_' instead of '.'",
         )
         self.AddParam(
-            "Coil specs", "Direction", self.uBool, True, hint="Unused for now"
+            "Coil specs",
+            "Direction",
+            self.uBool,
+            defaults["Coil specs"]["Direction"],
+            hint="Set to True for clockwise, False for counter-clockwise",
         )
 
         # Information about where this footprint needs to fit into.
-        self.AddParam("Install Info", "Inside Diameter, Radius", self.uMM, 30)
+        self.AddParam(
+            "Install Info",
+            "Inside Diameter, Radius",
+            self.uMM,
+            pcbnew.ToMM(30000000),
+            # pcbnew.ToMM(defaults["Install Info"]["Inside Diameter, Radius"]),
+        )
         self.AddParam(
             "Install Info",
             "Inner Ring gap",
             self.uMM,
-            0.5,
+            pcbnew.ToMM(defaults["Install Info"]["Inner Ring gap"]),
             hint="Gap between the innermost loop of this coil and the aperture",
         )
 
         # Info about the fabrication capabilities
-        self.AddParam("Fab Specs", "Trace Width", self.uMM, 0.2, min_value=0)
-        self.AddParam("Fab Specs", "Trace Spacing", self.uMM, 0.2, min_value=0)
         self.AddParam(
-            "Fab Specs", "Via Drill", self.uMM, 0.3, min_value=0, hint="Diameter"
+            "Fab Specs",
+            "Trace Width",
+            self.uMM,
+            pcbnew.ToMM(defaults["Fab Specs"]["Trace Width"]),
+            min_value=0,
         )
         self.AddParam(
-            "Fab Specs", "Via Annular Ring", self.uMM, 0.15, min_value=0, hint="Radius"
+            "Fab Specs",
+            "Trace Spacing",
+            self.uMM,
+            pcbnew.ToMM(defaults["Fab Specs"]["Trace Spacing"]),
+            min_value=0,
         )
-        self.AddParam("Fab Specs", "Pad Drill", self.uMM, 0.5, min_value=0)
-        self.AddParam("Fab Specs", "Pad Annular Ring", self.uMM, 0.2, min_value=0)
+        self.AddParam(
+            "Fab Specs",
+            "Via Drill",
+            self.uMM,
+            pcbnew.ToMM(defaults["Fab Specs"]["Via Drill"]),
+            min_value=0,
+            hint="Diameter",
+        )
+        self.AddParam(
+            "Fab Specs",
+            "Via Annular Ring",
+            self.uMM,
+            pcbnew.ToMM(defaults["Fab Specs"]["Via Annular Ring"]),
+            min_value=0,
+            hint="Radius",
+        )
+        self.AddParam(
+            "Fab Specs",
+            "Pad Drill",
+            self.uMM,
+            pcbnew.ToMM(defaults["Fab Specs"]["Pad Drill"]),
+            min_value=0,
+        )
+        self.AddParam(
+            "Fab Specs",
+            "Pad Annular Ring",
+            self.uMM,
+            pcbnew.ToMM(defaults["Fab Specs"]["Pad Annular Ring"]),
+            min_value=0,
+        )
 
     def CheckParameters(self):
         self.aperture_r = self.parameters["Install Info"]["Inside Diameter, Radius"]
@@ -71,6 +154,9 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
             pcbnew, self.parameters["Coil specs"]["Second Layer"]
         )
         self.clockwise_bool = self.parameters["Coil specs"]["Direction"]
+
+        with open(self.json_file, "w") as f:
+            json.dump(self.parameters, f, indent=4)
 
     def BuildThisFootprint(self):
         self.odd_loops = (self.turns % 2) == 1
@@ -288,32 +374,93 @@ class CoilGenerator1L1T(FootprintWizardBase.FootprintWizard):
     center_x = 0
     center_y = 0
 
+    json_file = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "CoilGenerator1L1T.json"
+    )
+
     GetName = lambda self: "Coil Generator, single layer, 1 turn"
     GetDescription = lambda self: "Generates a single turn loop at a circular aperture."
     GetValue = lambda self: "Single coil, single layer"
 
     def GenerateParameterList(self):
+
+        # Set some reasonable default values for the parameters
+        defaults = {
+            "Coil specs": {"Stub Length": 5000000, "Layer": "F_Cu", "Direction": True},
+            "Install Info": {"Radius": 30000000},
+            "Fab Specs": {
+                "Trace Width": 200000,
+                "Trace Spacing": 200000,
+                "Pad Drill": 500000,
+                "Pad Annular Ring": 200000,
+            },
+        }
+
+        # If this has been run before, load the previous values
+        if os.path.exists(self.json_file):
+            with open(self.json_file, "r") as f:
+                defaults = json.load(f)
+
         # Info about the coil itself.
-        self.AddParam("Coil specs", "Stub Length", self.uMM, 5, min_value=0)
+        self.AddParam(
+            "Coil specs",
+            "Stub Length",
+            self.uMM,
+            pcbnew.ToMM(defaults["Coil specs"]["Stub Length"]),
+            min_value=0,
+        )
         self.AddParam(
             "Coil specs",
             "Layer",
             self.uString,
-            "F_Cu",
+            defaults["Coil specs"]["Layer"],
             hint="Layer name.  Uses '_' instead of '.'",
         )
         self.AddParam(
-            "Coil specs", "Direction", self.uBool, True, hint="Unused for now"
+            "Coil specs",
+            "Direction",
+            self.uBool,
+            defaults["Coil specs"]["Direction"],
+            hint="Set to True for clockwise, False for counter-clockwise",
         )
 
         # Information about where this footprint needs to fit into.
-        self.AddParam("Install Info", "Radius", self.uMM, 30)
+        self.AddParam(
+            "Install Info",
+            "Radius",
+            self.uMM,
+            pcbnew.ToMM(defaults["Install Info"]["Radius"]),
+        )
 
         # Info about the fabrication capabilities
-        self.AddParam("Fab Specs", "Trace Width", self.uMM, 0.2, min_value=0)
-        self.AddParam("Fab Specs", "Trace Spacing", self.uMM, 0.2, min_value=0)
-        self.AddParam("Fab Specs", "Pad Drill", self.uMM, 0.5, min_value=0)
-        self.AddParam("Fab Specs", "Pad Annular Ring", self.uMM, 0.2, min_value=0)
+        self.AddParam(
+            "Fab Specs",
+            "Trace Width",
+            self.uMM,
+            pcbnew.ToMM(defaults["Fab Specs"]["Trace Width"]),
+            min_value=0,
+        )
+        self.AddParam(
+            "Fab Specs",
+            "Trace Spacing",
+            self.uMM,
+            pcbnew.ToMM(defaults["Fab Specs"]["Trace Width"]),
+            min_value=0,
+        )
+        self.AddParam(
+            "Fab Specs",
+            "Pad Drill",
+            self.uMM,
+            pcbnew.ToMM(defaults["Fab Specs"]["Pad Drill"]),
+            min_value=0,
+        )
+        self.AddParam(
+            "Fab Specs",
+            "Pad Annular Ring",
+            self.uMM,
+            pcbnew.ToMM(defaults["Fab Specs"]["Pad Annular Ring"]),
+            min_value=0,
+        )
 
     def CheckParameters(self):
         self.radius = self.parameters["Install Info"]["Radius"]
@@ -326,6 +473,9 @@ class CoilGenerator1L1T(FootprintWizardBase.FootprintWizard):
         self.layer = getattr(pcbnew, self.parameters["Coil specs"]["Layer"])
         self.clockwise_bool = self.parameters["Coil specs"]["Direction"]
         self.stub_length = self.parameters["Coil specs"]["Stub Length"]
+
+        with open(self.json_file, "w") as f:
+            json.dump(self.parameters, f, indent=4)
 
     def BuildThisFootprint(self):
         self.cw_multiplier = 1 if self.clockwise_bool else -1
