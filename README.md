@@ -60,3 +60,7 @@ This tool will have several limitations in it's current state.
 1. TODO: Add an inductance calculator with verification data.
 1. TODO: Add a resistance calculation for Ohms/oz.cu.
 1. TODO: Add cutouts to flux neutral and add boolean to enable/disable it.
+
+## Known Issues
+
+1. Flux Neutral coil generator doesn't adjust based on pad size.  
