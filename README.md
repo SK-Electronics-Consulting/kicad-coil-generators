@@ -64,3 +64,4 @@ This tool will have several limitations in it's current state.
 ## Known Issues
 
 1. Flux Neutral coil generator doesn't adjust based on pad size.  
+1. In `CoilGeneratorID2L`, somewhere between N=2000 and N=3000, the final coils aren't displayed in the footprint wizard.  Might be a KiCAD bug
