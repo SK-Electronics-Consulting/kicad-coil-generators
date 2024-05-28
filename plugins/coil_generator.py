@@ -4,10 +4,16 @@ import math
 import json
 import os
 
+TRACE_THICKNESS_1OZ = 0.035e-3  # 35um in meters
+RHO = 1.678e-8  # Copper resistivity (ohm-mm)
+
 
 class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
     center_x = 0
     center_y = 0
+
+    trace_length = 0  # meters
+    vias = 0  # number of vias
 
     json_file = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "CoilGeneratorID2L.json"
@@ -16,6 +22,30 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
     GetName = lambda self: "Coil Generator from ID"
     GetDescription = lambda self: "Generates a coil around a circular aperture."
     GetValue = lambda self: "Coil based on ID"
+
+    def DrawArcsYSym2Layer(self, layer1, layer2, center_x, start_x, degrees):
+        self.draw.SetLayer(layer1)
+        self.draw.Arc(
+            center_x,
+            self.center_y,
+            start_x,
+            self.center_y,
+            pcbnew.EDA_ANGLE(-degrees * self.cw_multiplier, pcbnew.DEGREES_T),
+        )
+        self.draw.SetLayer(layer2)
+        self.draw.Arc(
+            center_x,
+            self.center_y,
+            start_x,
+            self.center_y,
+            pcbnew.EDA_ANGLE(degrees * self.cw_multiplier, pcbnew.DEGREES_T),
+        )
+
+        """
+        Calculate the length of the arc and add it to the total trace length
+        """
+        arc_length = abs(center_x - start_x) * math.pi * abs(degrees) / 180
+        self.trace_length += arc_length * 2  # Two arcs
 
     def GenerateParameterList(self):
         # Set some reasonable default values for the parameters
@@ -37,6 +67,7 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
                 "Via Annular Ring": 150000,
                 "Pad Drill": 500000,
                 "Pad Annular Ring": 200000,
+                "Copper Thickness (Oz.Cu.)": 1,
             },
         }
 
@@ -136,6 +167,13 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
             pcbnew.ToMM(defaults["Fab Specs"]["Pad Annular Ring"]),
             min_value=0,
         )
+        self.AddParam(
+            "Fab Specs",
+            "Copper Thickness (Oz.Cu.)",
+            self.uFloat,
+            defaults["Fab Specs"]["Copper Thickness (Oz.Cu.)"],
+            min_value=0.01,
+        )
 
     def CheckParameters(self):
         self.aperture_r = self.parameters["Install Info"]["Inside Diameter, Radius"]
@@ -147,6 +185,9 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
         self.via_ann_ring = self.parameters["Fab Specs"]["Via Annular Ring"]
         self.pad_hole = self.parameters["Fab Specs"]["Pad Drill"]
         self.pad_ann_ring = self.parameters["Fab Specs"]["Pad Annular Ring"]
+        self.copper_thickness = self.parameters["Fab Specs"][
+            "Copper Thickness (Oz.Cu.)"
+        ]
 
         self.turns = self.parameters["Coil specs"]["Total Turns"]
         self.first_layer = getattr(pcbnew, self.parameters["Coil specs"]["First Layer"])
@@ -159,6 +200,7 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
             json.dump(self.parameters, f, indent=4)
 
     def BuildThisFootprint(self):
+        self.trace_length = 0
         self.odd_loops = (self.turns % 2) == 1
         self.odd_loops_multiplier = -1 if self.odd_loops else 1
         self.cw_multiplier = 1 if self.clockwise_bool else -1
@@ -202,6 +244,7 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
         pad.SetNumber(pad_number)
         pad.SetName(str(pad_number))
         self.module.Add(pad)
+        self.vias += 1
 
         """
         Draw the coils themselves
@@ -211,25 +254,12 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
         arc_start_x = (
             self.aperture_r + self.aperture_gap + max(via_d, self.trace_width) / 2
         ) * self.odd_loops_multiplier
-        self.draw.SetLayer(self.first_layer)
-        self.draw.Arc(
-            arc_center_x,
-            self.center_y,
-            arc_start_x,
-            self.center_y,
-            pcbnew.EDA_ANGLE(-180 * self.cw_multiplier, pcbnew.DEGREES_T),
-        )
-        self.draw.SetLayer(self.second_layer)
-        self.draw.Arc(
-            arc_center_x,
-            self.center_y,
-            arc_start_x,
-            self.center_y,
-            pcbnew.EDA_ANGLE(180 * self.cw_multiplier, pcbnew.DEGREES_T),
+        degrees = 180
+        self.DrawArcsYSym2Layer(
+            self.first_layer, self.second_layer, arc_center_x, arc_start_x, degrees
         )
 
         for ii in range(1, self.turns, 2):
-            self.draw.SetLayer(self.first_layer)
             arc_center_x = self.center_x + del_o_2 * self.odd_loops_multiplier
             arc_start_x = (
                 -(
@@ -240,26 +270,12 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
                 )
                 * self.odd_loops_multiplier
             )
-            self.draw.Arc(
-                arc_center_x,
-                self.center_y,
-                arc_start_x,
-                self.center_y,
-                pcbnew.EDA_ANGLE(-180 * self.cw_multiplier, pcbnew.DEGREES_T),
+            degrees = 180
+            self.DrawArcsYSym2Layer(
+                self.first_layer, self.second_layer, arc_center_x, arc_start_x, degrees
             )
-            self.draw.SetLayer(self.second_layer)
-            self.draw.Arc(
-                arc_center_x,
-                self.center_y,
-                arc_start_x,
-                self.center_y,
-                pcbnew.EDA_ANGLE(180 * self.cw_multiplier, pcbnew.DEGREES_T),
-            )
-
-        arc_start_x_max = arc_start_x
 
         for ii in range(2, self.turns, 2):
-            self.draw.SetLayer(self.first_layer)
             arc_center_x = (
                 self.center_x
                 + del_o_1 * (0.5 if ii == 0 else 1) * self.odd_loops_multiplier
@@ -271,26 +287,14 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
                 + (ii / 2) * (self.trace_width + self.trace_space)
                 - 0.5 * self.trace_width
             ) * self.odd_loops_multiplier
-            self.draw.Arc(
-                arc_center_x,
-                self.center_y,
-                arc_start_x,
-                self.center_y,
-                pcbnew.EDA_ANGLE(-180 * self.cw_multiplier, pcbnew.DEGREES_T),
-            )
-            self.draw.SetLayer(self.second_layer)
-            self.draw.Arc(
-                arc_center_x,
-                self.center_y,
-                arc_start_x,
-                self.center_y,
-                pcbnew.EDA_ANGLE(180 * self.cw_multiplier, pcbnew.DEGREES_T),
+            degrees = 180
+            self.DrawArcsYSym2Layer(
+                self.first_layer, self.second_layer, arc_center_x, arc_start_x, degrees
             )
 
         """
         Finish the inductor with nice tails and pads.
         """
-        self.draw.SetLayer(self.first_layer)
         arc_start_x = (
             self.center_x
             + self.aperture_r
@@ -300,20 +304,9 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
             - self.trace_width / 2
         )
         arc_center_x = arc_start_x + max(via_d, self.trace_width) * 2
-        self.draw.Arc(
-            arc_center_x,
-            self.center_y,
-            arc_start_x,
-            self.center_y,
-            pcbnew.EDA_ANGLE(90 * self.cw_multiplier, pcbnew.DEGREES_T),
-        )
-        self.draw.SetLayer(self.second_layer)
-        self.draw.Arc(
-            arc_center_x,
-            self.center_y,
-            arc_start_x,
-            self.center_y,
-            pcbnew.EDA_ANGLE(-90 * self.cw_multiplier, pcbnew.DEGREES_T),
+        degrees = -90
+        self.DrawArcsYSym2Layer(
+            self.first_layer, self.second_layer, arc_center_x, arc_start_x, degrees
         )
 
         pad = pcbnew.PAD(self.module)
@@ -355,7 +348,7 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
         fab_text_s = (
             f"Coil Generator from ID, 2 Layers\n"
             f'Direction: {"CW" if self.clockwise_bool else "CCW"}\n'
-            f"Inner Diameter: {self.aperture_r/1e6}\n"
+            f"Inner Radius: {self.aperture_r/1e6}\n"
             f"Inner Ring Gap: {self.aperture_gap/1e6}\n"
             f"Turns: {self.turns}\n"
             f'Layers (Start->Finish): {self.parameters["Coil specs"]["First Layer"]}->{self.parameters["Coil specs"]["Second Layer"]}\n'
@@ -370,6 +363,23 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
         fab_text.SetLayer(pcbnew.User_2)
         fab_text.SetHorizJustify(pcbnew.GR_TEXT_H_ALIGN_LEFT)
         self.module.Add(fab_text)
+
+        """
+        Capture the basic parameters in the Silk layer
+        """
+        resistance = (
+            RHO
+            * (self.trace_length / 1e9)
+            / (TRACE_THICKNESS_1OZ * self.copper_thickness * self.trace_width / 1e9)
+        )
+        basic_fab_text_s = f"Turns: {self.turns}\n" f"R(@25C): {resistance:.4f} Ohms\n"
+        basic_fab_text = pcbnew.PCB_TEXT(self.module)
+        basic_fab_text.SetText(basic_fab_text_s)
+        basic_fab_text.SetPosition(pcbnew.VECTOR2I(0, 0))
+        basic_fab_text.SetTextSize(pcbnew.VECTOR2I(text_size, text_size))
+        basic_fab_text.SetLayer(pcbnew.F_SilkS)
+        basic_fab_text.SetHorizJustify(pcbnew.GR_TEXT_H_ALIGN_LEFT)
+        self.module.Add(basic_fab_text)
 
 
 class CoilGenerator1L1T(FootprintWizardBase.FootprintWizard):
