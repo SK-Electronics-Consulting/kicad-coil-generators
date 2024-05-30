@@ -4,16 +4,12 @@ import math
 import json
 import os
 
-TRACE_THICKNESS_1OZ = 0.035e-3  # 35um in meters
-RHO = 1.678e-8  # Copper resistivity (ohm-mm)
+from .PCBTraceComponent import *
 
 
-class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
+class CoilGeneratorID2L(PCBTraceComponent):
     center_x = 0
     center_y = 0
-
-    trace_length = 0  # meters
-    vias = 0  # number of vias
 
     json_file = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "CoilGeneratorID2L.json"
@@ -22,30 +18,6 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
     GetName = lambda self: "Coil Generator from ID"
     GetDescription = lambda self: "Generates a coil around a circular aperture."
     GetValue = lambda self: "Coil based on ID"
-
-    def DrawArcsYSym2Layer(self, layer1, layer2, center_x, start_x, degrees):
-        self.draw.SetLayer(layer1)
-        self.draw.Arc(
-            center_x,
-            self.center_y,
-            start_x,
-            self.center_y,
-            pcbnew.EDA_ANGLE(-degrees * self.cw_multiplier, pcbnew.DEGREES_T),
-        )
-        self.draw.SetLayer(layer2)
-        self.draw.Arc(
-            center_x,
-            self.center_y,
-            start_x,
-            self.center_y,
-            pcbnew.EDA_ANGLE(degrees * self.cw_multiplier, pcbnew.DEGREES_T),
-        )
-
-        """
-        Calculate the length of the arc and add it to the total trace length
-        """
-        arc_length = abs(center_x - start_x) * math.pi * abs(degrees) / 180
-        self.trace_length += arc_length * 2  # Two arcs
 
     def GenerateParameterList(self):
         # Set some reasonable default values for the parameters
@@ -201,6 +173,8 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
 
     def BuildThisFootprint(self):
         self.trace_length = 0
+        self.vias = 0
+
         self.odd_loops = (self.turns % 2) == 1
         self.odd_loops_multiplier = -1 if self.odd_loops else 1
         self.cw_multiplier = 1 if self.clockwise_bool else -1
@@ -228,23 +202,12 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
         Draw the starting via between the front and back layers
         """
         pad_number = 3
-        pad = pcbnew.PAD(self.module)
-        pad.SetSize(pcbnew.VECTOR2I(via_d, via_d))
-        pad.SetShape(pcbnew.PAD_SHAPE_CIRCLE)
-        pad.SetAttribute(pcbnew.PAD_ATTRIB_PTH)
-        pad.SetLayerSet(pcbnew.LSET.AllCuMask())
-        pad.SetDrillSize(pcbnew.VECTOR2I(self.via_hole, self.via_hole))
-
         pos = pcbnew.VECTOR2I(
             int(self.aperture_r + self.aperture_gap + max(via_d, self.trace_width) / 2)
             * self.odd_loops_multiplier,
             0,
         )
-        pad.SetPosition(pos)
-        pad.SetNumber(pad_number)
-        pad.SetName(str(pad_number))
-        self.module.Add(pad)
-        self.vias += 1
+        self.PlacePad(pad_number, pos, via_d, self.via_hole, via=True)
 
         """
         Draw the coils themselves
@@ -309,42 +272,29 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
             self.first_layer, self.second_layer, arc_center_x, arc_start_x, degrees
         )
 
-        pad = pcbnew.PAD(self.module)
-        pad.SetSize(pcbnew.VECTOR2I(pad_d, pad_d))
-        pad.SetShape(pcbnew.PAD_SHAPE_CIRCLE)
-        pad.SetAttribute(pcbnew.PAD_ATTRIB_PTH)
-        pad.SetLayerSet(pcbnew.LSET.AllCuMask())
-        pad.SetDrillSize(pcbnew.VECTOR2I(self.pad_hole, self.pad_hole))
-
+        pad_number = 1
         pos = pcbnew.VECTOR2I(
             int(arc_center_x),
             -int(max(via_d, self.trace_width) * 2 * self.cw_multiplier),
         )
-        pad.SetPosition(pos)
-        pad.SetNumber(1)
-        pad.SetName("1")
-        self.module.Add(pad)
-        pad = pad.Duplicate()
+        self.PlacePad(pad_number, pos, pad_d, self.pad_hole)
 
+        pad_number = 2
         pos = pcbnew.VECTOR2I(
             int(arc_center_x),
             int(max(via_d, self.trace_width)) * 2 * self.cw_multiplier,
         )
-        pad.SetPosition(pos)
-        pad.SetNumber(2)
-        pad.SetName("2")
-        self.module.Add(pad)
+        self.PlacePad(pad_number, pos, pad_d, self.pad_hole)
 
         """
         Add Net Tie Group to the footprint. This allows the DRC to understand 
         that the shorting traces are OK for this component
         """
-        self.module.AddNetTiePadGroup("1,2,3")
+        self.GenerateNetTiePadGroup()
 
         """
         Capture the parameters in the Fab layer
         """
-        text_size = self.GetTextSize()  # IPC nominal
         fab_text_s = (
             f"Coil Generator from ID, 2 Layers\n"
             f'Direction: {"CW" if self.clockwise_bool else "CCW"}\n'
@@ -356,33 +306,19 @@ class CoilGeneratorID2L(FootprintWizardBase.FootprintWizard):
             f"Via Drill/annular ring: {self.via_hole/1e6}/{self.via_ann_ring/1e6}\n"
             f"Pad Drill/annular ring: {self.pad_hole/1e6}/{self.pad_ann_ring/1e6}\n"
         )
-        fab_text = pcbnew.PCB_TEXT(self.module)
-        fab_text.SetText(fab_text_s)
-        fab_text.SetPosition(pcbnew.VECTOR2I(0, 0))
-        fab_text.SetTextSize(pcbnew.VECTOR2I(text_size, text_size))
-        fab_text.SetLayer(pcbnew.User_2)
-        fab_text.SetHorizJustify(pcbnew.GR_TEXT_H_ALIGN_LEFT)
-        self.module.Add(fab_text)
+        self.DrawText(fab_text_s, pcbnew.User_2)
 
         """
         Capture the basic parameters in the Silk layer
         """
-        resistance = (
-            RHO
-            * (self.trace_length / 1e9)
-            / (TRACE_THICKNESS_1OZ * self.copper_thickness * self.trace_width / 1e9)
+        basic_fab_text_s = (
+            f"Turns: {self.turns}\n"
+            f"R(@25C & {self.copper_thickness:.1f} Oz Cu): {self.GetResistance():.4f} Ohms\n"
         )
-        basic_fab_text_s = f"Turns: {self.turns}\n" f"R(@25C): {resistance:.4f} Ohms\n"
-        basic_fab_text = pcbnew.PCB_TEXT(self.module)
-        basic_fab_text.SetText(basic_fab_text_s)
-        basic_fab_text.SetPosition(pcbnew.VECTOR2I(0, 0))
-        basic_fab_text.SetTextSize(pcbnew.VECTOR2I(text_size, text_size))
-        basic_fab_text.SetLayer(pcbnew.F_SilkS)
-        basic_fab_text.SetHorizJustify(pcbnew.GR_TEXT_H_ALIGN_LEFT)
-        self.module.Add(basic_fab_text)
+        self.DrawText(basic_fab_text_s, pcbnew.F_SilkS)
 
 
-class CoilGenerator1L1T(FootprintWizardBase.FootprintWizard):
+class CoilGenerator1L1T(PCBTraceComponent):
     center_x = 0
     center_y = 0
 
@@ -550,45 +486,33 @@ class CoilGenerator1L1T(FootprintWizardBase.FootprintWizard):
             -max(pad_d, self.trace_width) / 2 - self.trace_space,
         )
 
-        pad = pcbnew.PAD(self.module)
-        pad.SetSize(pcbnew.VECTOR2I(pad_d, pad_d))
-        pad.SetShape(pcbnew.PAD_SHAPE_CIRCLE)
-        pad.SetAttribute(pcbnew.PAD_ATTRIB_PTH)
-        pad.SetLayerSet(pcbnew.LSET.AllCuMask())
-        pad.SetDrillSize(pcbnew.VECTOR2I(self.pad_hole, self.pad_hole))
-
+        pad_number = 1
         pos = pcbnew.VECTOR2I(
             int(arc_center_x + self.stub_length),
             -int(max(pad_d, self.trace_width) / 2 + self.trace_space)
             * self.cw_multiplier,
         )
-        pad.SetPosition(pos)
-        pad.SetNumber(1)
-        pad.SetName("1")
-        self.module.Add(pad)
-        pad = pad.Duplicate()
+        self.PlacePad(pad_number, pos, pad_d, self.pad_hole)
 
+        pad_number = 2
         pos = pcbnew.VECTOR2I(
             int(arc_center_x + self.stub_length),
             int(max(pad_d, self.trace_width) / 2 + self.trace_space)
             * self.cw_multiplier,
         )
-        pad.SetPosition(pos)
-        pad.SetNumber(2)
-        pad.SetName("2")
-        self.module.Add(pad)
+        self.PlacePad(pad_number, pos, pad_d, self.pad_hole)
 
         """
         Add Net Tie Group to the footprint. This allows the DRC to understand 
         that the shorting traces are OK for this component
         """
-        self.module.AddNetTiePadGroup("1,2")
+        self.GenerateNetTiePadGroup()
 
         """
         Capture the parameters in the Fab layer
         """
-        text_size = self.GetTextSize()  # IPC nominal
         fab_text_s = (
+            f"Coil Generator, Single Layer, 1 Turn\n"
             f'Direction {"CCW" if self.clockwise_bool else "CW"}\n'
             f"Diameter: {self.radius/1e6}\n"
             f'Layer: {self.parameters["Coil specs"]["Layer"]}\n'
@@ -596,10 +520,5 @@ class CoilGenerator1L1T(FootprintWizardBase.FootprintWizard):
             f"Pad Drill/annular ring: {self.pad_hole/1e6}/{self.pad_ann_ring/1e6}\n"
             f"Stub Length: {self.stub_length/1e6}"
         )
-        fab_text = pcbnew.PCB_TEXT(self.module)
-        fab_text.SetText(fab_text_s)
-        fab_text.SetPosition(pcbnew.VECTOR2I(0, 0))
-        fab_text.SetTextSize(pcbnew.VECTOR2I(text_size, text_size))
-        fab_text.SetLayer(pcbnew.User_2)
-        fab_text.SetHorizJustify(pcbnew.GR_TEXT_H_ALIGN_LEFT)
-        self.module.Add(fab_text)
+
+        self.DrawText(fab_text_s, pcbnew.User_2)

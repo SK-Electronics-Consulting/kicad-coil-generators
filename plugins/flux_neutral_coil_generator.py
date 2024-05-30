@@ -4,8 +4,10 @@ import math
 import json
 import os
 
+from .PCBTraceComponent import *
 
-class FluxNeutralCoilGen(FootprintWizardBase.FootprintWizard):
+
+class FluxNeutralCoilGen(PCBTraceComponent):
     center_x = 0
     center_y = 0
 
@@ -192,6 +194,9 @@ class FluxNeutralCoilGen(FootprintWizardBase.FootprintWizard):
         cc = self.via_ann_ring * 2 + self.via_hole + self.trace_space
         via_gap = math.sqrt(cc * cc - aa * aa)  # units of KiCAD_internal
 
+        pad_d = self.pad_ann_ring * 2 + self.pad_hole
+        via_d = self.via_ann_ring * 2 + self.via_hole
+
         self.draw.SetLineThickness(self.trace_width)
 
         """ Draw the large curves defining the bulk of the coil"""
@@ -377,12 +382,12 @@ class FluxNeutralCoilGen(FootprintWizardBase.FootprintWizard):
             pos = pcbnew.VECTOR2I(
                 int(arc_start_x + offset), int(arc_start_y - ii * pitch)
             )
-            self.make_via(pos, pad_number)
+            self.PlacePad(pad_number, pos, via_d, self.via_hole, via=True)
 
             pos = pcbnew.VECTOR2I(
                 int(-arc_start_x - offset), int(arc_start_y - ii * pitch)
             )
-            self.make_via(pos, pad_number)
+            self.PlacePad(pad_number, pos, via_d, self.via_hole, via=True)
 
         """
         Draw the tap points from the coil.  
@@ -410,7 +415,8 @@ class FluxNeutralCoilGen(FootprintWizardBase.FootprintWizard):
         pos = pcbnew.VECTOR2I(
             int(arc_center_x + aa), int(-arc_start_y - aa - self.stub_length)
         )
-        self.make_pad(pos, 1)
+        # self.make_pad(pos, 1)
+        self.PlacePad(1, pos, pad_d, self.pad_hole)
 
         # Diagonal track to get to via
         self.draw.Line(
@@ -419,7 +425,7 @@ class FluxNeutralCoilGen(FootprintWizardBase.FootprintWizard):
 
         # Add Via
         pos = pcbnew.VECTOR2I(int(-start_x - aa), int(-line_length + aa))
-        self.make_via(pos, pad_number)
+        self.PlacePad(pad_number, pos, via_d, self.via_hole, via=True)
 
         # Vertical track to get under the coils.
         self.draw.SetLayer(self.second_layer)
@@ -443,7 +449,7 @@ class FluxNeutralCoilGen(FootprintWizardBase.FootprintWizard):
             int(-start_x - aa + self.min_radius),
             int(-line_length - aa - (self.turns - 1) * pitch - self.min_radius),
         )
-        self.make_via(pos, pad_number)
+        self.PlacePad(pad_number, pos, via_d, self.via_hole, via=True)
 
         # Drawing stub section
         self.draw.SetLayer(self.first_layer)
@@ -459,59 +465,27 @@ class FluxNeutralCoilGen(FootprintWizardBase.FootprintWizard):
             int(-start_x - aa + self.min_radius),
             int(-arc_start_y - aa - self.stub_length),
         )
-        self.make_pad(pos, 2)
+        self.PlacePad(2, pos, pad_d, self.pad_hole)
 
         """
         Add Net Tie Group to the footprint. This allows the DRC to understand 
         that the shorting traces are OK for this component
         """
-        self.module.AddNetTiePadGroup("1,2,3")
+        self.GenerateNetTiePadGroup()
 
         """
         Capture the parameters in the Fab layer
         """
-        text_size = self.GetTextSize()  # IPC nominal
         fab_text_s = (
+            f"Flux Neutral Coil\n"
             f"Outer Diameter: {self.aperture_r/1e6}\n"
             f"Outer Ring Gap: {self.aperture_gap/1e6}\n"
             f"Turns: {self.turns}\n"
             f"Min Radius: {self.min_radius/1e6}\n"
-            f"Stub Length: {self.stub_length/1e6}\n"
             f'Layers (Start->Finish): {self.parameters["Coil specs"]["First Layer"]}->{self.parameters["Coil specs"]["Second Layer"]}\n'
             f"Trace Width/space: {self.trace_width/1e6}/{self.trace_space/1e6}\n"
             f"Via Drill/annular ring: {self.via_hole/1e6}/{self.via_ann_ring/1e6}\n"
             f"Pad Drill/annular ring: {self.pad_hole/1e6}/{self.pad_ann_ring/1e6}\n"
+            f"Stub Length: {self.stub_length/1e6}\n"
         )
-        fab_text = pcbnew.PCB_TEXT(self.module)
-        fab_text.SetText(fab_text_s)
-        fab_text.SetPosition(pcbnew.VECTOR2I(0, 0))
-        fab_text.SetTextSize(pcbnew.VECTOR2I(text_size, text_size))
-        fab_text.SetLayer(pcbnew.User_2)
-        fab_text.SetHorizJustify(pcbnew.GR_TEXT_H_ALIGN_LEFT)
-        self.module.Add(fab_text)
-
-    def make_via(self, pos, pad_number: int):
-        via_d = self.via_ann_ring * 2 + self.via_hole
-        pad = pcbnew.PAD(self.module)
-        pad.SetSize(pcbnew.VECTOR2I(via_d, via_d))
-        pad.SetShape(pcbnew.PAD_SHAPE_CIRCLE)
-        pad.SetAttribute(pcbnew.PAD_ATTRIB_PTH)
-        pad.SetLayerSet(pcbnew.LSET.AllCuMask())
-        pad.SetDrillSize(pcbnew.VECTOR2I(self.via_hole, self.via_hole))
-        pad.SetNumber(pad_number)
-        pad.SetName(str(pad_number))
-        pad.SetPosition(pos)
-        self.module.Add(pad)
-
-    def make_pad(self, pos, pad_number: int):
-        pad_d = self.pad_ann_ring * 2 + self.pad_hole
-        pad = pcbnew.PAD(self.module)
-        pad.SetSize(pcbnew.VECTOR2I(pad_d, pad_d))
-        pad.SetAttribute(pcbnew.PAD_ATTRIB_PTH)
-        pad.SetLayerSet(pcbnew.LSET.AllCuMask())
-        pad.SetShape(pcbnew.PAD_SHAPE_CIRCLE)
-        pad.SetDrillSize(pcbnew.VECTOR2I(self.pad_hole, self.pad_hole))
-        pad.SetNumber(pad_number)
-        pad.SetName(str(pad_number))
-        pad.SetPosition(pos)
-        self.module.Add(pad)
+        self.DrawText(fab_text_s, pcbnew.User_2)
